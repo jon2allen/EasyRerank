@@ -12,7 +12,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from easy_ranker import EasyRanker
+from EasyRerank import EasyRanker
 
 # 1. Setup in-memory list and directory path
 in_memory_docs = [

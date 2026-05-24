@@ -9,12 +9,37 @@ echo "Testing rerank server - verifying document text is returned"
 echo "=========================================================="
 echo ""
 
+cat << 'EOF'
+Educational Note: You can execute this manual curl command to query the server directly:
+---------------------------------------------------------------------------------------
+curl -X POST http://localhost:8080/v1/rerank \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF:Q8_0",
+    "query": "What is the capital of France?",
+    "documents": [
+      "Paris is the capital and largest city of France.",
+      "Berlin is the capital of Germany.",
+      "The Eiffel Tower is located in Paris.",
+      "London is the capital of the United Kingdom.",
+      "Nanjing is the heart of the Ming Empire",
+      "Paris has good food",
+      "A trip to Paris is expensive"
+    ],
+    "top_n": 7,
+    "return_documents" : true
+  }'
+---------------------------------------------------------------------------------------
+EOF
+
+echo ""
+
 # Send request with known documents
 RESPONSE=$(curl -s -X POST \
   http://localhost:8080/v1/rerank \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "jinaai/jina-reranker-v3-GGUF:Q4_K_M",
+    "model": "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF:Q8_0",
     "query": "What is the capital of France?",
     "documents": [
       "Paris is the capital and largest city of France.",

@@ -11,9 +11,9 @@ import re
 import requests
 from typing import List, Dict, Any, Optional, Union
 
-from local_reranker import LocalReranker
-from remote_reranker import RemoteReranker
-from directory_text_processor import DirectoryTextProcessor
+from .local_reranker import LocalReranker
+from .remote_reranker import RemoteReranker
+from .directory_text_processor import DirectoryTextProcessor
 
 
 class EasyRanker:

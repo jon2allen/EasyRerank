@@ -9,11 +9,13 @@ Usage:
 """
 
 import os
+import sys
 import unittest
 from unittest.mock import patch, MagicMock
 import requests
 
-from remote_reranker import RemoteReranker
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from EasyRerank import RemoteReranker
 
 
 class TestRemoteRerankerUnit(unittest.TestCase):

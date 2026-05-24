@@ -14,8 +14,7 @@ import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from directory_text_processor import DirectoryTextProcessor
-from remote_reranker import RemoteReranker
+from EasyRerank import DirectoryTextProcessor, RemoteReranker
 
 # Use the Madison directory
 madison_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Madison')

@@ -1,0 +1,17 @@
+api_key
+rerank_api.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Environments
+venv/
+.env
+
+# OS metadata
+.DS_Store
+

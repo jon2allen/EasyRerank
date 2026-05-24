@@ -47,7 +47,7 @@ Usage:
 
 import os
 from typing import Generator, List, Optional, Tuple, Dict, Any
-from text_parser import TextParser
+from .text_parser import TextParser
 
 
 class DirectoryTextProcessor:
