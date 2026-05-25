@@ -1,4 +1,4 @@
-# EasyRerank 🚀
+# EasyRerank 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
@@ -189,6 +189,23 @@ for rank, item in enumerate(reranked[:3], 1):
 ```
 
 ---
+
+## Included Quick Tests
+
+The project includes seven standard Python verification scripts (`quick_test*.py`) in the root directory to test different components and modes. All of these scripts are fully tracked and checked into the Git repository:
+
+| Script Name | Purpose & Features Tested | Backend Mode |
+|:---|:---|:---|
+| **[quick_test1.py](file:///Users/jon2allen/projects/rerank/quick_test1.py)** | Evaluates file loading and text parsing mechanics. Loads and splits Madison inaugural addresses into chunks and prints the resulting segments and index. | **None** (Tests processing only) |
+| **[quick_test2.py](file:///Users/jon2allen/projects/rerank/quick_test2.py)** | Basic local query verification. Reranks the first 50 chunks of Madison speeches against the query `"Justice"`. | **Local** (`LocalReranker`) |
+| **[quick_test3.py](file:///Users/jon2allen/projects/rerank/quick_test3.py)** | Pre-filtering and scaling local tests. Performs batched length-based pre-selection (`top_n=2`) under a safe `1500` character limit to query `"Character of people"`. | **Local** (`LocalReranker`) |
+| **[quick_test4.py](file:///Users/jon2allen/projects/rerank/quick_test4.py)** | Pre-filtering and scaling remote tests. Mirrors the pre-selection logic of `quick_test3.py` but routes cross-encoder scoring to Jina AI's Cloud API. | **Remote** (`RemoteReranker`) |
+| **[quick_test5.py](file:///Users/jon2allen/projects/rerank/quick_test5.py)** | High-level `EasyRanker` wrapper test. Tests auto-routing, in-memory list reranking, directory document loading, and cached results caching. | **Both / Auto-routing** (`EasyRanker`) |
+| **[quick_test6.py](file:///Users/jon2allen/projects/rerank/quick_test6.py)** | Cloud context capabilities demonstration. Forces cloud routing to exploit the 131K token window, handling large chunks (up to `3000` characters) safely. | **Remote Forced** (`EasyRanker` remote) |
+| **[quick_test7.py](file:///Users/jon2allen/projects/rerank/quick_test7.py)** | Explicit model endpoint routing. Tests local mode forcing the server to evaluate a specific model key (`zz2Felladrin/...`). | **Local Forced** (`EasyRanker` local) |
+
+---
+
 
 ## Included Shell Utilities
 

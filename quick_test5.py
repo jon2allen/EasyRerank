@@ -51,9 +51,12 @@ try:
     
     # 4. Rerank Madison speeches directory
     print("\nStep 3: Reranking speeches in the 'Madison' directory...")
+    q1 = "Separation of religious institutions from civil government authority"
+    print("Query: ", q1 )
+    print("-----------------")
     # This will load, parse text files into chunks, and rerank them remotely
     results_dir = ranker.rerank(
-        query="Separation of religious institutions from civil government authority",
+        query=q1,
         documents=madison_dir,
         top_n=3,
         verbose=True,
