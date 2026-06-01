@@ -190,9 +190,60 @@ for rank, item in enumerate(reranked[:3], 1):
 
 ---
 
+## Token Limits and Chunk Sizing
+
+**Important:** Local rerank servers (llama.cpp) have a physical batch size limit, typically 512 tokens. If your chunks exceed this limit, you'll see errors like:
+
+```
+Rerank API call failed: 500 Server Error
+Server response: {'error': {'code': 500, 'message': 'input (1481 tokens) is too large to process. increase the physical batch size (current batch size: 512)', 'type': 'server_error'}}
+```
+
+### Why `max_sentence_length` Matters
+
+The `max_sentence_length` parameter (used in `EasyRanker`, `DirectoryTextProcessor`, and `TextParser`) controls the maximum character length for text chunks. This is essential because:
+
+- **Token to Character Ratio**: Approximately 4 characters ≈ 1 token
+- **Server Limit**: Most local servers have a 512-token physical batch size
+- **Query Overhead**: The query itself consumes tokens, leaving less for documents
+- **Safe Limit**: ~1500 characters ensures chunks fit within typical server limits
+
+### Solutions for Token Limit Errors
+
+1. **Recommended: Use `max_sentence_length`**
+   ```python
+   ranker = EasyRanker(
+       documents=my_dir,
+       chunking_mode='paragraphs',
+       max_sentence_length=1500  # Split long chunks
+   )
+   ```
+
+2. **Increase Server Context Size**
+   Start your server with a larger context:
+   ```bash
+   llama-server -m jina-reranker-v3-Q4_K_M.gguf --rerank --port 8080 -c 2048
+   ```
+
+3. **Use Smaller Chunking Modes**
+   - `chunking_mode='sentences'` - Produces smaller, sentence-level chunks
+   - `chunking_mode='lines'` - Produces line-level chunks
+   - `chunking_mode='paragraphs'` - May produce large chunks; use with `max_sentence_length`
+
+4. **Pre-filter with `process_with_batched_top_n`**
+   ```python
+   chunks, _ = processor.process_with_batched_top_n(
+       top_n=2,
+       max_limit=64,
+       max_sentence_length=1500  # Critical for long documents
+   )
+   ```
+
+---
+
 ## Included Quick Tests
 
-The project includes seven standard Python verification scripts (`quick_test*.py`) in the root directory to test different components and modes. All of these scripts are fully tracked and checked into the Git repository:
+The project includes ten standard Python verification scripts (`quick_test*.py`) in the root directory to test different components and modes. All of these scripts are fully tracked and checked into the Git repository:
 
 | Script Name | Purpose & Features Tested | Backend Mode |
 |:---|:---|:---|
@@ -203,6 +254,10 @@ The project includes seven standard Python verification scripts (`quick_test*.py
 | **[quick_test5.py](file:///Users/jon2allen/projects/rerank/quick_test5.py)** | High-level `EasyRanker` wrapper test. Tests auto-routing, in-memory list reranking, directory document loading, and cached results caching. | **Both / Auto-routing** (`EasyRanker`) |
 | **[quick_test6.py](file:///Users/jon2allen/projects/rerank/quick_test6.py)** | Cloud context capabilities demonstration. Forces cloud routing to exploit the 131K token window, handling large chunks (up to `3000` characters) safely. | **Remote Forced** (`EasyRanker` remote) |
 | **[quick_test7.py](file:///Users/jon2allen/projects/rerank/quick_test7.py)** | Explicit model endpoint routing. Tests local mode forcing the server to evaluate a specific model key (`zz2Felladrin/...`). | **Local Forced** (`EasyRanker` local) |
+| **[quick_test8.py](file:///Users/jon2allen/projects/rerank/quick_test8.py)** | Chunking mode verification. Tests `DirectoryTextProcessor` with all three chunking modes: `"sentences"`, `"lines"`, and `"paragraphs"`. Validates mode selection and error handling. | **None** (Tests processing only) |
+| **[quick_test9.py](file:///Users/jon2allen/projects/rerank/quick_test9.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend (local or remote) using all three chunking modes. Verifies that different text segmentation approaches work with the high-level wrapper and `max_sentence_length` splitting. | **Auto** (`EasyRanker`) |
+| **[quick_test10.py](file:///Users/jon2allen/projects/rerank/quick_test10.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend using all three chunking modes. Demonstrates cloud-based or local reranking with different text segmentation and automatic chunk splitting for long paragraphs/lines. | **Auto** (`EasyRanker`) |
+| **[quick_test11.py](file:///Users/jon2allen/projects/rerank/quick_test11.py)** | Inline markdown with line-based chunking. Tests processing of structured markdown content (30 Western European foods with descriptions) with 4-line chunking, then feeds all chunks to `EasyRanker` with `backend='auto'` and no model specified. | **Auto** (`EasyRanker`) |
 
 ---
 

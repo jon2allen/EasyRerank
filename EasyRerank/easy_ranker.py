@@ -25,6 +25,9 @@ class EasyRanker:
       3. Provides an 'app.run()'-style execution with printouts and result caching.
     """
 
+    # Valid chunking modes
+    CHUNKING_MODES = {'sentences', 'lines', 'paragraphs'}
+
     def __init__(
         self,
         documents: Optional[Union[str, List[str]]] = None,
@@ -35,7 +38,8 @@ class EasyRanker:
         model: Optional[str] = None,
         timeout: int = 120,
         chunk_size: int = 1,
-        max_sentence_length: Optional[int] = 1500
+        max_sentence_length: Optional[int] = 1500,
+        chunking_mode: str = 'sentences'  # 'sentences' | 'lines' | 'paragraphs'
     ):
         """Initialize EasyRanker.
         
@@ -47,9 +51,15 @@ class EasyRanker:
             port: Server port for local mode.
             model: Model identifier override.
             timeout: Network request timeout.
-            chunk_size: Sentences per chunk when processing a directory.
-            max_sentence_length: Sentence split length threshold for directory processing.
+            chunk_size: Sentences/lines/paragraphs per chunk when processing a directory.
+            max_sentence_length: Max character length for sentence/line/paragraph chunks.
+            chunking_mode: Text segmentation mode - 'sentences', 'lines', or 'paragraphs' (default: 'sentences').
         """
+        if chunking_mode not in self.CHUNKING_MODES:
+            raise ValueError(
+                f"chunking_mode must be one of {self.CHUNKING_MODES}, got '{chunking_mode}'"
+            )
+        
         self.documents_source = documents
         self.backend = backend.lower()
         self.api_key = api_key
@@ -59,6 +69,7 @@ class EasyRanker:
         self.timeout = timeout
         self.chunk_size = chunk_size
         self.max_sentence_length = max_sentence_length
+        self.chunking_mode = chunking_mode
 
         self.latest_results: List[Dict[str, Any]] = []
         self.backend_instance = self._initialize_backend()
@@ -170,7 +181,8 @@ class EasyRanker:
         top_n: Optional[int] = None,
         batch_size: int = 64,
         verbose: bool = True,
-        max_sentence_length: Optional[int] = None
+        max_sentence_length: Optional[int] = None,
+        chunking_mode: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Run the reranking pipeline.
         
@@ -180,7 +192,19 @@ class EasyRanker:
           3. Caches the output in self.latest_results.
           4. Displays a beautifully formatted ASCII printout if verbose.
           5. Returns the ranked result list.
+          
+        Args:
+            query: The search query string.
+            documents: Override documents (directory path or list of strings).
+            top_n: Maximum number of results to return.
+            batch_size: Number of documents per API batch call.
+            verbose: Whether to print formatted results.
+            max_sentence_length: Override max character length per chunk.
+            chunking_mode: Override chunking mode ('sentences', 'lines', 'paragraphs').
         """
+        # Use query-level override if provided, otherwise default to instance-level
+        effective_chunking_mode = chunking_mode if chunking_mode is not None else self.chunking_mode
+        
         doc_source = documents if documents is not None else self.documents_source
         if not doc_source:
             raise ValueError("No documents provided to rerank (pass to __init__ or rerank()).")
@@ -202,7 +226,8 @@ class EasyRanker:
             iterator = processor.process_with_index(
                 filenames=None, 
                 chunk_size=self.chunk_size,
-                max_sentence_length=max_len
+                max_sentence_length=max_len,
+                chunking_mode=effective_chunking_mode
             )
             chunks = list(iterator)
 

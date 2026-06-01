@@ -1,20 +1,29 @@
 """
-Text Parser - A simple library for iterating over text paragraphs and sections.
+Text Parser - A simple library for iterating over text paragraphs, sections, lines, and sentences.
 
 This library provides generator-based functions and classes to break up text
-documents into paragraphs, sections, or sentence chunks, yielding one element at a time.
+documents into paragraphs, sections, lines, or sentence chunks, yielding one element at a time.
 
 Usage:
-    from text_parser import TextParser, generate_paragraphs, generate_sentence_chunks
+    from text_parser import TextParser, generate_paragraphs, generate_sentence_chunks, generate_lines
 
     # Class-based usage
     parser = TextParser(your_text, paragraph_delimiter='\n\n')
     for paragraph in parser.paragraphs():
         print(paragraph)
 
+    # Line-based parsing
+    parser = TextParser(your_text)
+    for line in parser.lines():
+        print(line)
+
     # Simple function usage
     for paragraph in generate_paragraphs(your_text):
         process(paragraph)
+
+    # Line-based parsing with function
+    for line in generate_lines(your_text):
+        print(line)
 
     # Section-based parsing
     parser = TextParser(your_text, paragraph_delimiter='\n\n', section_delimiter='===')
@@ -32,7 +41,7 @@ Usage:
 """
 
 import re
-from typing import Generator, Optional
+from typing import Generator, List, Optional
 
 
 class TextParser:
@@ -68,11 +77,16 @@ class TextParser:
         self.section_delimiter = section_delimiter
         self.strip_whitespace = strip_whitespace
 
-    def paragraphs(self) -> Generator[str, None, None]:
+    def paragraphs(self, max_length: Optional[int] = None) -> Generator[str, None, None]:
         """Generator that yields paragraphs one at a time.
         
         Each call to next() or iteration produces a new paragraph.
         Empty paragraphs are skipped.
+        Optionally splits long paragraphs that exceed max_length.
+        
+        Args:
+            max_length: Optional maximum character length for paragraphs.
+                      Longer paragraphs will be split into smaller fragments (default: None)
         
         Yields:
             str: The next paragraph from the text
@@ -87,7 +101,12 @@ class TextParser:
         for para in self.text.split(self.paragraph_delimiter):
             cleaned = para.strip() if self.strip_whitespace else para
             if cleaned or not self.strip_whitespace:
-                yield cleaned
+                # Split long paragraphs if max_length is set
+                if max_length is not None and len(cleaned) > max_length:
+                    for fragment in self._split_text(cleaned, max_length):
+                        yield fragment
+                else:
+                    yield cleaned
 
     def sections(self) -> Generator[str, None, None]:
         """Generator that yields sections (if section_delimiter is configured).
@@ -117,6 +136,61 @@ class TextParser:
     def __iter__(self):
         """Allow direct iteration over paragraphs."""
         return self.paragraphs()
+
+    def lines(self, max_length: Optional[int] = None) -> Generator[str, None, None]:
+        """Generator that yields lines one at a time.
+        
+        Splits the text by single newline characters and yields each line.
+        Empty lines are skipped by default (unless strip_whitespace=False).
+        Optionally splits long lines that exceed max_length.
+        
+        Args:
+            max_length: Optional maximum character length for lines.
+                      Longer lines will be split into smaller fragments (default: None)
+        
+        Yields:
+            str: The next line from the text
+        
+        Example:
+            >>> parser = TextParser("Line 1\\nLine 2\\nLine 3")
+            >>> for line in parser.lines():
+            ...     print(line)
+            Line 1
+            Line 2
+            Line 3
+        """
+        for line in self.text.split('\n'):
+            cleaned = line.strip() if self.strip_whitespace else line
+            if cleaned or not self.strip_whitespace:
+                # Split long lines if max_length is set
+                if max_length is not None and len(cleaned) > max_length:
+                    for fragment in self._split_text(cleaned, max_length):
+                        yield fragment
+                else:
+                    yield cleaned
+    
+    def _split_text(self, text: str, max_length: int) -> List[str]:
+        """Split text into fragments of maximum length.
+        
+        Args:
+            text: The text to split
+            max_length: Maximum character length per fragment
+            
+        Returns:
+            List of text fragments, each <= max_length characters
+        """
+        fragments = []
+        current = text
+        while len(current) > max_length:
+            # Find the last space before max_length to avoid breaking words
+            split_pos = current[:max_length].rfind(' ')
+            if split_pos <= 0:  # No space found, hard split
+                split_pos = max_length
+            fragments.append(current[:split_pos])
+            current = current[split_pos:].lstrip()
+        if current:
+            fragments.append(current)
+        return fragments
 
     def sentence_chunks(
         self,
@@ -257,6 +331,35 @@ def generate_sections(
     """
     for section in text.split(delimiter):
         cleaned = section.strip() if strip_whitespace else section
+        if cleaned or not strip_whitespace:
+            yield cleaned
+
+
+def generate_lines(
+    text: str,
+    strip_whitespace: bool = True
+) -> Generator[str, None, None]:
+    """Simple generator function that yields lines from text.
+    
+    Splits text by single newline characters and yields each line.
+    
+    Args:
+        text: The text content to parse
+        strip_whitespace: Whether to strip whitespace from yields (default: True)
+    
+    Yields:
+        str: The next line from the text
+    
+    Example:
+        >>> text = "Line 1\\nLine 2\\nLine 3"
+        >>> for line in generate_lines(text):
+        ...     print(line)
+        Line 1
+        Line 2
+        Line 3
+    """
+    for line in text.split('\n'):
+        cleaned = line.strip() if strip_whitespace else line
         if cleaned or not strip_whitespace:
             yield cleaned
 

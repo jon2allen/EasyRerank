@@ -51,6 +51,9 @@ from .text_parser import TextParser
 
 
 class DirectoryTextProcessor:
+    # Valid chunking modes
+    CHUNKING_MODES = {'sentences', 'lines', 'paragraphs'}
+    
     class ChunkIterator:
         """Iterator that yields chunks and builds an index simultaneously.
         
@@ -61,19 +64,25 @@ class DirectoryTextProcessor:
             index: Dictionary mapping chunk_id to {'filename': str, 'chunk': str}
         """
 
-        def __init__(self, processor, filenames, chunk_size, max_sentence_length=None):
+        def __init__(self, processor, filenames, chunk_size, max_sentence_length=None, chunking_mode='sentences'):
             """Initialize the chunk iterator.
             
             Args:
                 processor: Parent DirectoryTextProcessor instance
                 filenames: List of filenames to process
-                chunk_size: Number of sentences per chunk
-                max_sentence_length: Optional max sentence character length
+                chunk_size: Number of sentences/lines/paragraphs per chunk
+                max_sentence_length: Optional max character length per chunk
+                chunking_mode: Chunking mode - 'sentences', 'lines', or 'paragraphs'
             """
+            if chunking_mode not in processor.CHUNKING_MODES:
+                raise ValueError(
+                    f"chunking_mode must be one of {processor.CHUNKING_MODES}, got '{chunking_mode}'"
+                )
             self.processor = processor
             self.filenames = filenames
             self.chunk_size = chunk_size
             self.max_sentence_length = max_sentence_length
+            self.chunking_mode = chunking_mode
             self.index: Dict[int, Dict[str, Any]] = {}
             self._chunk_id = 0
 
@@ -85,7 +94,20 @@ class DirectoryTextProcessor:
             """
             for filename in self.filenames:
                 self.processor._get_file_path(filename)
-                for chunk in self.processor.process_file(filename, self.chunk_size, self.max_sentence_length):
+                
+                # Get chunks based on chunking mode
+                if self.chunking_mode == 'lines':
+                    chunks = self.processor.process_file_lines(filename, max_length=self.max_sentence_length)
+                elif self.chunking_mode == 'paragraphs':
+                    chunks = self.processor.process_file_paragraphs(filename, max_length=self.max_sentence_length)
+                else:  # 'sentences'
+                    chunks = self.processor.process_file(
+                        filename, 
+                        self.chunk_size, 
+                        self.max_sentence_length
+                    )
+                
+                for chunk in chunks:
                     result = {
                         'chunk_id': self._chunk_id,
                         'filename': filename,
@@ -201,6 +223,30 @@ class DirectoryTextProcessor:
         ):
             yield chunk
 
+    def process_file_lines(
+        self,
+        filename: str,
+        max_length: Optional[int] = None
+    ) -> Generator[str, None, None]:
+        """Process a single .txt file and yield lines.
+        
+        Args:
+            filename: The .txt file to process
+            max_length: Optional max character length per line (default: None)
+            
+        Yields:
+            str: A line from the file
+            
+        Raises:
+            ValueError: If the file is not a .txt file
+            FileNotFoundError: If the file does not exist
+        """
+        text = self._read_file(filename)
+        parser = TextParser(text)
+        
+        for line in parser.lines(max_length=max_length):
+            yield line
+
     def process_files(
         self,
         filenames: List[str],
@@ -246,12 +292,14 @@ class DirectoryTextProcessor:
 
     def process_file_paragraphs(
         self,
-        filename: str
+        filename: str,
+        max_length: Optional[int] = None
     ) -> Generator[str, None, None]:
         """Process a single .txt file and yield paragraphs.
         
         Args:
             filename: The .txt file to process
+            max_length: Optional max character length per paragraph (default: None)
             
         Yields:
             str: A paragraph from the file
@@ -259,7 +307,7 @@ class DirectoryTextProcessor:
         text = self._read_file(filename)
         parser = TextParser(text)
         
-        for paragraph in parser.paragraphs():
+        for paragraph in parser.paragraphs(max_length=max_length):
             yield paragraph
 
     def process_file_sections(
@@ -292,7 +340,8 @@ class DirectoryTextProcessor:
         self,
         filenames: Optional[List[str]] = None,
         chunk_size: int = 1,
-        max_sentence_length: Optional[int] = None
+        max_sentence_length: Optional[int] = None,
+        chunking_mode: str = 'sentences'
     ) -> 'ChunkIterator':
         """Process files, yielding chunks while building an index.
         
@@ -305,8 +354,9 @@ class DirectoryTextProcessor:
         
         Args:
             filenames: Specific .txt filenames to process (None = all .txt files)
-            chunk_size: Number of sentences per chunk (default: 1)
-            max_sentence_length: Optional max sentence character length (default: None)
+            chunk_size: Number of sentences/lines/paragraphs per chunk (default: 1)
+            max_sentence_length: Optional max character length per chunk (default: None)
+            chunking_mode: Chunking mode - 'sentences', 'lines', or 'paragraphs' (default: 'sentences')
             
         Returns:
             ChunkIterator: An iterator that yields chunk dicts and builds .index
@@ -318,9 +368,16 @@ class DirectoryTextProcessor:
             
             # Access the index at any point
             chunk_20_file = iterator.index[20]['filename']
+            
+            # With line-based chunking
+            iterator = processor.process_with_index(chunking_mode='lines')
         """
+        if chunking_mode not in self.CHUNKING_MODES:
+            raise ValueError(
+                f"chunking_mode must be one of {self.CHUNKING_MODES}, got '{chunking_mode}'"
+            )
         files = filenames if filenames is not None else self.list_files()
-        return self.ChunkIterator(self, files, chunk_size, max_sentence_length)
+        return self.ChunkIterator(self, files, chunk_size, max_sentence_length, chunking_mode)
 
     def process_with_batched_top_n(
         self,
@@ -329,7 +386,8 @@ class DirectoryTextProcessor:
         top_n: int = 3,
         max_limit: int = 64,
         batch_size: int = 64,
-        max_sentence_length: Optional[int] = None
+        max_sentence_length: Optional[int] = None,
+        chunking_mode: str = 'sentences'
     ) -> Tuple[List[Dict[str, Any]], bool]:
         """Process files in batches, collecting top_n chunks from each batch.
         
@@ -340,12 +398,13 @@ class DirectoryTextProcessor:
         
         Args:
             filenames: Specific .txt filenames to process (None = all .txt files)
-            chunk_size: Number of sentences per chunk (default: 1)
+            chunk_size: Number of sentences/lines/paragraphs per chunk (default: 1)
             top_n: Number of top chunks to keep from each batch (default: 3)
             max_limit: Maximum total chunks to collect (default: 64)
             batch_size: Number of chunks per batch before selecting top_n (default: 64)
-            max_sentence_length: Optional max chars per sentence. Longer sentences
+            max_sentence_length: Optional max chars per chunk. Longer chunks
                                will be split (default: None, no limit)
+            chunking_mode: Chunking mode - 'sentences', 'lines', or 'paragraphs' (default: 'sentences')
             
         Returns:
             Tuple of (collected_top_chunks, reached_limit):
@@ -354,6 +413,11 @@ class DirectoryTextProcessor:
                 - reached_limit: True if max_limit was reached before 
                   processing all files
         """
+        if chunking_mode not in self.CHUNKING_MODES:
+            raise ValueError(
+                f"chunking_mode must be one of {self.CHUNKING_MODES}, got '{chunking_mode}'"
+            )
+        
         files = filenames if filenames is not None else self.list_files()
         
         collected_top_chunks: List[Dict[str, Any]] = []
@@ -371,10 +435,18 @@ class DirectoryTextProcessor:
             text = self._read_file(filename)
             parser = TextParser(text)
             
-            for chunk in parser.sentence_chunks(
-                chunk_size=chunk_size,
-                max_sentence_length=max_sentence_length
-            ):
+            # Get chunks based on mode
+            if chunking_mode == 'lines':
+                chunks_iter = parser.lines(max_length=max_sentence_length)
+            elif chunking_mode == 'paragraphs':
+                chunks_iter = parser.paragraphs(max_length=max_sentence_length)
+            else:  # 'sentences'
+                chunks_iter = parser.sentence_chunks(
+                    chunk_size=chunk_size,
+                    max_sentence_length=max_sentence_length
+                )
+            
+            for chunk in chunks_iter:
                 if reached_limit:
                     break
                     
