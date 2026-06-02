@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "EasyRerank"
-version = "0.2.0"
+version = "0.2.1"
 description = "A premium, self-contained Python module for local (llama.cpp) and remote (Jina AI) semantic document reranking with automatic chunk splitting."
 readme = "README.md"
 authors = [
