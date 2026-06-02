@@ -39,12 +39,13 @@ class EasyRanker:
         timeout: int = 120,
         chunk_size: int = 1,
         max_sentence_length: Optional[int] = 1500,
-        chunking_mode: str = 'sentences'  # 'sentences' | 'lines' | 'paragraphs'
+        chunking_mode: str = 'sentences',  # 'sentences' | 'lines' | 'paragraphs'
+        extra_extensions: Optional[List[str]] = None
     ):
         """Initialize EasyRanker.
         
         Args:
-            documents: Either a directory path containing .txt files (str) or a list of text strings.
+            documents: Either a directory path containing supported files (str) or a list of text strings.
             backend: Reranker backend to use ('local', 'remote', or 'auto').
             api_key: Optional Jina AI API key for remote mode.
             host: Server hostname for local mode.
@@ -54,6 +55,7 @@ class EasyRanker:
             chunk_size: Sentences/lines/paragraphs per chunk when processing a directory.
             max_sentence_length: Max character length for sentence/line/paragraph chunks.
             chunking_mode: Text segmentation mode - 'sentences', 'lines', or 'paragraphs' (default: 'sentences').
+            extra_extensions: Optional list of additional custom file extensions (e.g. ['.json', '.csv']).
         """
         if chunking_mode not in self.CHUNKING_MODES:
             raise ValueError(
@@ -70,7 +72,8 @@ class EasyRanker:
         self.chunk_size = chunk_size
         self.max_sentence_length = max_sentence_length
         self.chunking_mode = chunking_mode
-
+        self.extra_extensions = extra_extensions
+ 
         self.latest_results: List[Dict[str, Any]] = []
         self.backend_instance = self._initialize_backend()
 
@@ -218,7 +221,7 @@ class EasyRanker:
                 raise ValueError(f"Documents directory path does not exist or is not a directory: {doc_source}")
 
             is_directory_mode = True
-            processor = DirectoryTextProcessor(doc_source)
+            processor = DirectoryTextProcessor(doc_source, extra_extensions=self.extra_extensions)
             
             # Use query-level override if provided, otherwise default to instance-level setting
             max_len = max_sentence_length if max_sentence_length is not None else self.max_sentence_length

@@ -46,8 +46,17 @@ Usage:
 """
 
 import os
+import mimetypes
 from typing import Generator, List, Optional, Tuple, Dict, Any
 from .text_parser import TextParser
+
+# Initialize standard mimetypes registry
+mimetypes.init()
+mimetypes.add_type('text/markdown', '.md')
+mimetypes.add_type('text/markdown', '.markdown')
+mimetypes.add_type('text/x-rst', '.rst')
+mimetypes.add_type('text/plain', '.log')
+mimetypes.add_type('text/plain', '.conf')
 
 
 class DirectoryTextProcessor:
@@ -120,20 +129,22 @@ class DirectoryTextProcessor:
                     yield result
                     self._chunk_id += 1
 
-    """Processes .txt files in a directory using TextParser to generate chunks.
+    """Processes text and code files in a directory using TextParser to generate chunks.
     
     This class provides methods to list files, process individual or multiple
-    .txt files, and iterate over all files in a directory, yielding text chunks.
+    supported files, and iterate over all files in a directory, yielding text chunks.
     
     Attributes:
-        directory: The directory path containing .txt files
+        directory: The directory path containing the documents
+        extra_extensions: List of additional custom extensions to allow (with or without dot)
     """
 
-    def __init__(self, directory: str):
+    def __init__(self, directory: str, extra_extensions: Optional[List[str]] = None):
         """Initialize the directory text processor.
         
         Args:
-            directory: Path to the directory containing .txt files
+            directory: Path to the directory containing supported files
+            extra_extensions: Optional list of additional custom file extensions (e.g. ['.json', '.csv'])
             
         Raises:
             ValueError: If the directory does not exist
@@ -145,34 +156,77 @@ class DirectoryTextProcessor:
             raise NotADirectoryError(f"Path is not a directory: {directory}")
         
         self.directory = directory
+        self.extra_extensions: List[str] = []
+        if extra_extensions:
+            for ext in extra_extensions:
+                ext_str = str(ext).lower()
+                if not ext_str.startswith('.'):
+                    ext_str = '.' + ext_str
+                self.extra_extensions.append(ext_str)
+
+    def _is_supported_file(self, filename: str) -> bool:
+        """Check if the file is supported.
+        
+        Supports standard text and code files (mime type starting with 'text/' or common extensions),
+        excluding CSV and TSV by default. Also supports any extensions explicitly
+        provided in extra_extensions.
+        """
+        filename_lower = filename.lower()
+        
+        # 1. Check user-supplied extra extensions first
+        if self.extra_extensions:
+            if any(filename_lower.endswith(ext) for ext in self.extra_extensions):
+                return True
+                
+        # 2. Check standard text/code mime types
+        mime_type, _ = mimetypes.guess_type(filename)
+        if mime_type and mime_type.startswith('text/'):
+            # Ignore tabular structures by default unless explicitly included in extra_extensions
+            if filename_lower.endswith(('.csv', '.tsv')):
+                return False
+            return True
+            
+        # 3. Fallback: Check extension against common text/code extensions if mime guess failed
+        common_text_exts = {
+            '.txt', '.text', '.md', '.markdown', '.rst', '.py', '.c', '.cpp', 
+            '.h', '.hh', '.hpp', '.java', '.js', '.mjs', '.ts', '.tsx', 
+            '.sh', '.bash', '.log', '.conf', '.cfg', '.ini', '.yaml', '.yml'
+        }
+        _, ext = os.path.splitext(filename_lower)
+        if ext in common_text_exts:
+            return True
+            
+        return False
 
     def list_files(self) -> List[str]:
-        """List all .txt files in the directory.
+        """List all supported files in the directory.
         
         Returns:
-            List of .txt filenames (relative to the directory)
+            List of supported filenames (relative to the directory)
         """
         files = []
         for filename in os.listdir(self.directory):
-            if filename.endswith('.txt'):
-                files.append(filename)
+            if self._is_supported_file(filename):
+                # Ensure it's a file, not a directory
+                if os.path.isfile(os.path.join(self.directory, filename)):
+                    files.append(filename)
         return sorted(files)
 
     def _get_file_path(self, filename: str) -> str:
         """Get the full path for a file in the directory.
         
         Args:
-            filename: The filename (should be a .txt file)
+            filename: The filename
             
         Returns:
             Full path to the file
             
         Raises:
-            ValueError: If the file is not a .txt file
+            ValueError: If the file is not a supported file type
             FileNotFoundError: If the file does not exist in the directory
         """
-        if not filename.endswith('.txt'):
-            raise ValueError(f"File must end with .txt: {filename}")
+        if not self._is_supported_file(filename):
+            raise ValueError(f"File format is not supported: {filename}")
         
         filepath = os.path.join(self.directory, filename)
         if not os.path.isfile(filepath):

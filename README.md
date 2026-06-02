@@ -241,6 +241,35 @@ The `max_sentence_length` parameter (used in `EasyRanker`, `DirectoryTextProcess
 
 ---
 
+## Supported File Extensions & macOS MIME-Type Handling
+
+### Supported File Extensions
+`EasyRerank` dynamically detects and processes text and code documents in a directory. By default, it supports:
+- **Documentation & Markup:** `.txt`, `.text`, `.md`, `.markdown`, `.rst`, `.html`, `.htm`, `.css`, `.xml`, `.log`, `.conf`
+- **Code files:** `.py`, `.c`, `.cpp`, `.h`, `.hh`, `.hpp`, `.java`, `.js`, `.mjs`, `.ts`, `.tsx`, `.sh`, `.bash`
+
+> [!NOTE]
+> Tabular data structures like `.csv` and `.tsv` are **ignored by default** because feeding raw table rows into a semantic reranker loses the column header context.
+
+### Custom Extra Extensions
+If you need to include other files (like raw `.json` or `.csv` files) or force-include specific extensions, pass the `extra_extensions` list during initialization:
+
+```python
+ranker = EasyRanker(
+    documents="./my_dir",
+    extra_extensions=[".json", ".csv"]  # Allows dot-prefixed or raw extensions
+)
+```
+
+### macOS MIME-Type Registry Issue
+On macOS systems, the native Launch Services database does not always map common developer extensions (like `.md` or `.markdown`) to a standard `text/` MIME type in Python's default registry. This can result in Python's standard `mimetypes.guess_type()` returning `(None, None)` and ignoring those documents during scanning.
+
+**How EasyRerank handles this:**
+1. **Explicit Pre-Registration:** At module import time, `EasyRerank` explicitly registers `.md`, `.markdown`, and `.rst` into Python's active `mimetypes` database.
+2. **Robust Extension Fallback:** If the system MIME database still fails to classify a file, `EasyRerank` checks the extension against a hardcoded set of standard plain-text and code extensions before discarding the file.
+
+---
+
 ## Included Quick Tests
 
 The project includes ten standard Python verification scripts (`quick_test*.py`) in the root directory to test different components and modes. All of these scripts are fully tracked and checked into the Git repository:
