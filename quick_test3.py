@@ -70,7 +70,7 @@ print("=" * 80)
 print()
 
 # Note: Server requires model parameter
-reranker = LocalReranker(model='jinaai/jina-reranker-v3-GGUF:Q4_K_M')
+reranker = LocalReranker(model='sinjab/bge-reranker-large-F16-GGUF:F16')
 
 if not reranker.check_server():
     print("ERROR: Local rerank server is not running.")

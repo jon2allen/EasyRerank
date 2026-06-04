@@ -222,7 +222,7 @@ class LocalReranker:
         # Collect all results
         all_results: List[Dict[str, Any]] = []
 
-        for batch in batches:
+        for batch_idx, batch in enumerate(batches):
             response = self._call_rerank_api(query, batch, top_n=None)
             # Debug: Check for zero scores in response
             batch_results = response.get('results', [])
@@ -232,6 +232,17 @@ class LocalReranker:
                     print(f"DEBUG: Server returned all zero scores for batch of {len(batch)} documents", file=sys.stderr)
                     print(f"DEBUG: Query: {query[:50]}...", file=sys.stderr)
                     print(f"DEBUG: Sample document: {batch[0][:100]}...", file=sys.stderr)
+                
+                # Apply index offset
+                global_offset = batch_idx * batch_size
+                for result in batch_results:
+                    local_index = result.get('index', 0)
+                    global_idx = global_offset + local_index
+                    result['index'] = global_idx
+                    # Ensure document field is populated for parity with Jina Remote API
+                    if 'document' not in result or not result['document']:
+                        result['document'] = {'text': documents[global_idx]}
+            
             all_results.extend(batch_results)
 
         # Sort all results by relevance score (descending)
