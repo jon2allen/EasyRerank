@@ -15,7 +15,6 @@ Usage:
 """
 
 import base64
-import json
 import os
 import sys
 import time
@@ -85,10 +84,10 @@ def fetch_image_as_b64(url: str, label: str):
         return None, None
 
 
-def raw_rerank(documents: list, top_n: int = 4):
+def raw_rerank(query: str, documents: list, top_n: int = 4):
     """Direct API call - returns (status_code, response_dict)."""
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
-    payload = {"model": MODEL, "query": QUERY, "documents": documents, "top_n": top_n}
+    payload = {"model": MODEL, "query": query, "documents": documents, "top_n": top_n}
     resp = requests.post(
         BASE_URL,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
@@ -96,6 +95,28 @@ def raw_rerank(documents: list, top_n: int = 4):
         timeout=30,
     )
     return resp.status_code, resp.json()
+
+
+def print_test_header(query: str, documents: list) -> None:
+    """Print the query and a summary of documents being sent."""
+    print(f"  Query   : \"{query}\"")
+    print(f"  Docs ({len(documents)}):")
+    for i, d in enumerate(documents):
+        if isinstance(d, dict):
+            if "image" in d:
+                src = d["image"]
+                if src.startswith("data:"):
+                    label = f"[base64, {len(src):,} chars]"
+                else:
+                    label = src if len(src) <= 65 else src[:62] + "..."
+                print(f"    [{i}] image : {label}")
+            elif "text" in d:
+                txt = d["text"]
+                print(f"    [{i}] text  : {txt if len(txt) <= 65 else txt[:62] + '...'}")
+        else:
+            s = str(d)
+            print(f"    [{i}] str   : {s if len(s) <= 65 else s[:62] + '...'}")
+    print()
 
 
 def print_results(status: int, data: dict) -> None:
@@ -109,7 +130,7 @@ def print_results(status: int, data: dict) -> None:
     if not results:
         print("  WARN: No results returned")
         return
-    print(f"  {'Rank':<5} {'Score':<8} {'Type':<6} Source")
+    print(f"  {'Rank':<5} {'Score':<8} {'Type':<6} Result")
     print(f"  {'-'*5} {'-'*8} {'-'*6} {'-'*45}")
     for rank, res in enumerate(results, 1):
         score = res.get("relevance_score", 0.0)
@@ -119,17 +140,20 @@ def print_results(status: int, data: dict) -> None:
                 kind = "image"
                 src = doc["image"]
                 if src.startswith("data:"):
-                    src = src[:40] + f"... [{len(doc['image'])} chars total]"
+                    display = f"[base64, {len(src):,} chars]"
+                else:
+                    display = src if len(src) <= 55 else src[:52] + "..."
             elif "text" in doc:
                 kind = "text"
-                src = doc["text"]
+                display = doc["text"]
             else:
                 kind = "?"
-                src = str(doc)
+                display = str(doc)
         else:
             kind = "str"
-            src = str(doc)
-        display = src if len(src) <= 55 else src[:52] + "..."
+            display = str(doc)
+        if len(display) > 55:
+            display = display[:52] + "..."
         print(f"  {rank:<5} {score:<8.4f} {kind:<6} {display}")
     print(f"  Total: {len(results)} results | Provider: {data.get('provider', '?')}")
 
@@ -149,8 +173,7 @@ def main() -> None:
 
     print()
     print("quick_test13.py -- Base64 Image Input Test")
-    print(f"Model: {MODEL}")
-    print(f"Query: \"{QUERY}\"")
+    print(f"Model  : {MODEL}")
     print()
 
     # ---------------------------------------------------------------
@@ -166,57 +189,58 @@ def main() -> None:
     cat_url = images["Cat (Wikimedia)"]["url"]
     cat_b64 = images["Cat (Wikimedia)"]["data_uri"]
     dog_b64 = images["Dog (Wikimedia)"]["data_uri"]
-    # Fall back to cat b64 if dog download failed (still tests multi-image b64)
     second_b64 = dog_b64 if dog_b64 else cat_b64
-    second_label = "dog" if dog_b64 else "cat (duplicate — dog rate-limited)"
+    second_label = "dog" if dog_b64 else "cat (duplicate - dog rate-limited)"
 
     # ---------------------------------------------------------------
-    # Test A: URL-based baseline (known working)
+    # Test A: URL-based baseline
     # ---------------------------------------------------------------
     sep("Test A: URL-based baseline (known working)")
-    status, data = raw_rerank([{"image": cat_url}] + TEXT_DOCS)
+    docs_a = [{"image": cat_url}] + TEXT_DOCS
+    print_test_header(QUERY, docs_a)
+    status, data = raw_rerank(QUERY, docs_a)
     print_results(status, data)
     print()
 
     # ---------------------------------------------------------------
-    # Test B: Base64 data URI — single image + text
+    # Test B: Base64 data URI
     # ---------------------------------------------------------------
     sep("Test B: Base64 data URI (single image + text docs)")
     if cat_b64:
-        print(f"  Data URI length: {len(cat_b64):,} chars (~{len(cat_b64)//1024}KB)")
-        status, data = raw_rerank([{"image": cat_b64}] + TEXT_DOCS)
+        docs_b = [{"image": cat_b64}] + TEXT_DOCS
+        print_test_header(QUERY, docs_b)
+        status, data = raw_rerank(QUERY, docs_b)
         print_results(status, data)
     else:
         print("  SKIPPED: cat image download failed")
     print()
 
     # ---------------------------------------------------------------
-    # Test C: Mixed — URL image + base64 image + text
+    # Test C: Mixed URL + base64 + text
     # ---------------------------------------------------------------
     sep(f"Test C: Mixed URL + base64 ({second_label}) + text")
     if cat_b64:
-        docs_mixed = [
-            {"image": cat_url},       # URL
-            {"image": second_b64},    # base64
+        docs_c = [
+            {"image": cat_url},
+            {"image": second_b64},
             {"text": "A fluffy cat sitting on a windowsill in the sun."},
             {"text": "A street map of downtown Berlin."},
         ]
-        status, data = raw_rerank(docs_mixed)
+        print_test_header(QUERY, docs_c)
+        status, data = raw_rerank(QUERY, docs_c)
         print_results(status, data)
     else:
         print("  SKIPPED: cat image download failed")
     print()
 
     # ---------------------------------------------------------------
-    # Test D: Pure base64 images (no URLs, no text)
+    # Test D: Pure base64 images only
     # ---------------------------------------------------------------
-    sep(f"Test D: Pure base64 images (cat + {second_label}, no text)")
+    sep(f"Test D: Pure base64 images only (cat + {second_label}, no text)")
     if cat_b64:
-        docs_pure_b64 = [
-            {"image": cat_b64},
-            {"image": second_b64},
-        ]
-        status, data = raw_rerank(docs_pure_b64, top_n=2)
+        docs_d = [{"image": cat_b64}, {"image": second_b64}]
+        print_test_header(QUERY, docs_d)
+        status, data = raw_rerank(QUERY, docs_d, top_n=2)
         print_results(status, data)
     else:
         print("  SKIPPED: cat image download failed")
