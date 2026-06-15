@@ -356,14 +356,18 @@ The project includes several shell scripts in the root directory to assist with 
 
 ## Changelog
 
-### v0.2.2 — Vision/Image Reranking & Local Reranker Fixes
+### v0.2.3 — Local Reranker Bugfixes & Typings
 - **`LocalReranker` Indexing Fix**: Fixed index offset mapping when processing documents across multiple batches; local indices are now correctly offset by the batch index to map back to original global indices.
 - **`LocalReranker` Compatibility**: Ensured the `document` text dictionary is populated in the returned result list for full parity with the `RemoteReranker` response format.
+- **Type Signatures & Safety**: Updated type signatures on `LocalReranker` and `EasyRanker` to support `List[Union[str, Dict[str, Any]]]`. Local reranker checks inputs and raises a clear `ValueError` if image inputs are passed.
+- **Enhanced Formatting**: Improved `EasyRanker` verbose output formatting to print clear descriptions for image/base64 documents without raising `AttributeError`.
+- **New Tests**: Added [test_local_reranker.py](file:///Users/jon2allen/projects/rerank/test_local_reranker.py) for offline unit testing of local batching and type checks.
+
+### v0.2.2 — Vision/Image Reranking
 - **`RemoteReranker`**: `_call_rerank_api` and `rerank()` now accept `List[Union[str, Dict[str, Any]]]`.
   - If any document is a `dict` (`{"image": url}` or `{"text": "..."}`), the full payload is sent as a list of dicts — plain strings are automatically wrapped as `{"text": s}`.
   - Pure string lists continue to be sent as-is (backward compatible with Cohere, Jina).
-- **New Tests & Cache Helpers**:
-  - Added [test_local_reranker.py](file:///Users/jon2allen/projects/rerank/test_local_reranker.py) for offline unit testing.
+- **Vision Tests & Cache Helpers**:
   - Added `fetch_test_images.py` to cache test images locally.
   - Added `quick_test12.py`, `quick_test13.py` (Base64 test), and `quick_test14.py` (Visual discrimination test) for vision reranking validation.
 - Updated `pyproject.toml` description and keywords to reflect multimodal support.
