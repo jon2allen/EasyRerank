@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "EasyRerank"
-version = "0.2.1"
-description = "A premium, self-contained Python module for local (llama.cpp) and remote (Jina AI) semantic document reranking with automatic chunk splitting."
+version = "0.2.2"
+description = "A premium, self-contained Python module for local (llama.cpp) and remote (Jina AI, OpenRouter) semantic document reranking with automatic chunk splitting and vision/image reranking support."
 readme = "README.md"
 authors = [
     { name = "Jon Allen" }
@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Text Processing :: General",
 ]
-keywords = ["rerank", "cross-encoder", "semantic-search", "llama.cpp", "jina", "nlp", "information-retrieval"]
+keywords = ["rerank", "cross-encoder", "semantic-search", "llama.cpp", "jina", "openrouter", "nvidia", "vision-rerank", "multimodal", "nlp", "information-retrieval"]
 requires-python = ">=3.8"
 dependencies = [
     "requests>=2.25.0",

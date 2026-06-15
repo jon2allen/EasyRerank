@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
-[![Backend: llama.cpp / Jina AI](https://img.shields.io/badge/Backend-llama.cpp%20%7C%20Jina%20AI-orange.svg)](https://github.com/ggml-org/llama.cpp)
+[![Backend: llama.cpp / Jina AI / OpenRouter](https://img.shields.io/badge/Backend-llama.cpp%20%7C%20Jina%20AI%20%7C%20OpenRouter-orange.svg)](https://github.com/ggml-org/llama.cpp)
 
 A premium, production-ready, self-contained Python module for local and remote semantic document reranking. Bridging the gap between 200-year-old historical texts (like James Madison's presidential speeches) and modern user search queries, **EasyRerank** enables cross-encoder intelligence through a unified, elegant API.
 
@@ -11,6 +11,7 @@ A premium, production-ready, self-contained Python module for local and remote s
 ## Key Features
 
 - **Dual-Backend Capabilities**: Auto-routes between a locally running `llama.cpp` server (using models like `Qwen3-Reranker` or `bge-reranker-v2-m3`) and the remote `Jina AI Cloud API` (`jina-reranker-v3`).
+- **Vision/Image Reranking** *(v0.2.2)*: Supports mixed text + image document lists for vision-language rerankers (e.g. `nvidia/llama-nemotron-rerank-vl-1b-v2:free` via OpenRouter). Pass `{"image": url}` and `{"text": "..."}` dicts alongside plain strings — the API payload is formatted automatically.
 - **Robust Text Processing**: Automatically loads, parses, and dynamically chunks `.txt` directories into sentence or paragraph blocks with built-in protection against local context size crashes (512-token limits).
 - **Intelligent Pre-filtering**: Provides length-based batched pre-selection (`process_with_batched_top_n`) to extract candidate summaries before sending them to the scoring models.
 - **Unified Meta-Wrapper**: The high-level `EasyRanker` wrapper supports seamless list-based in-memory reranking and directory-based file reranking with automatic backend detection, score-caching, and beautiful CLI output tables.
@@ -190,6 +191,46 @@ for rank, item in enumerate(reranked[:3], 1):
 
 ---
 
+### Use Case 4: Vision/Image Reranking (v0.2.2)
+
+For vision-language rerankers like `nvidia/llama-nemotron-rerank-vl-1b-v2:free` (available free on OpenRouter), you can pass mixed lists of image URLs and text documents. The `RemoteReranker` automatically detects dict-format documents and formats the payload correctly:
+
+```python
+from EasyRerank import RemoteReranker
+import os
+
+# Initialize with the NVIDIA vision-language reranker via OpenRouter
+reranker = RemoteReranker(
+    api_key=os.environ["OPENROUTER_API_KEY"],
+    model="nvidia/llama-nemotron-rerank-vl-1b-v2:free",
+    base_url="https://openrouter.ai/api/v1/rerank"
+)
+
+# Mix of image URLs and plain text documents
+documents = [
+    {"image": "https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg"},
+    {"text": "A fluffy cat sitting on a windowsill in the sun."},
+    {"text": "A street map of downtown Berlin."},
+    {"image": "https://example.com/dog.jpg"},
+]
+
+results = reranker.rerank(
+    query="a photograph of a cat",
+    documents=documents,
+    top_n=3
+)
+
+for result in results:
+    doc = result["document"]
+    source = doc.get("image") or doc.get("text", "")
+    print(f"Rank {result['index']+1} | Score: {result['relevance_score']:.4f} | {source}")
+```
+
+> [!NOTE]
+> Plain strings mixed into a vision document list are automatically wrapped as `{"text": s}`. Pure string lists (text-only reranking) are sent as-is for full backward compatibility with Cohere and Jina APIs.
+
+---
+
 ## Token Limits and Chunk Sizing
 
 **Important:** Local rerank servers (llama.cpp) have a physical batch size limit, typically 512 tokens. If your chunks exceed this limit, you'll see errors like:
@@ -287,6 +328,7 @@ The project includes ten standard Python verification scripts (`quick_test*.py`)
 | **[quick_test9.py](file:///Users/jon2allen/projects/rerank/quick_test9.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend (local or remote) using all three chunking modes. Verifies that different text segmentation approaches work with the high-level wrapper and `max_sentence_length` splitting. | **Auto** (`EasyRanker`) |
 | **[quick_test10.py](file:///Users/jon2allen/projects/rerank/quick_test10.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend using all three chunking modes. Demonstrates cloud-based or local reranking with different text segmentation and automatic chunk splitting for long paragraphs/lines. | **Auto** (`EasyRanker`) |
 | **[quick_test11.py](file:///Users/jon2allen/projects/rerank/quick_test11.py)** | Inline markdown with line-based chunking. Tests processing of structured markdown content (30 Western European foods with descriptions) with 4-line chunking, then feeds all chunks to `EasyRanker` with `backend='auto'` and no model specified. | **Auto** (`EasyRanker`) |
+| **[quick_test12.py](file:///Users/jon2allen/projects/rerank/quick_test12.py)** | Vision/image reranking. Tests `RemoteReranker` with a mixed list of `{"image": url}` and `{"text": "..."}` documents against the NVIDIA `llama-nemotron-rerank-vl-1b-v2:free` model via OpenRouter. Validates that plain strings are auto-wrapped and that scores are returned for both image and text entries. | **Remote** (`RemoteReranker` / OpenRouter) |
 
 ---
 
@@ -307,6 +349,28 @@ The project includes several shell scripts in the root directory to assist with 
   ```bash
   ./rerank_jina_local.sh
   ```
+
+---
+
+## Changelog
+
+### v0.2.2 — Vision/Image Reranking
+- **`RemoteReranker`**: `_call_rerank_api` and `rerank()` now accept `List[Union[str, Dict[str, Any]]]`.
+  - If any document is a `dict` (`{"image": url}` or `{"text": "..."}`), the full payload is sent as a list of dicts — plain strings are automatically wrapped as `{"text": s}`.
+  - Pure string lists continue to be sent as-is (backward compatible with Cohere, Jina).
+- Added `quick_test12.py` for vision reranking validation.
+- Updated `pyproject.toml` description and keywords to reflect multimodal support.
+
+### v0.2.1
+- Added automatic chunk splitting via `max_sentence_length` for `lines` and `paragraphs` modes.
+- Added `max_length` parameter to `TextParser.lines()`, `paragraphs()`, and all `DirectoryTextProcessor` methods.
+- Added `quick_test9`, `quick_test10`, `quick_test11`.
+
+### v0.2.0
+- Initial release of `EasyRanker` unified wrapper.
+- Auto-routing between `LocalReranker` and `RemoteReranker`.
+- Directory-based and in-memory reranking.
+- Batched pre-filtering via `process_with_batched_top_n`.
 
 ---
 
