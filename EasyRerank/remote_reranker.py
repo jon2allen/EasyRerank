@@ -202,7 +202,17 @@ class RemoteReranker:
                 timeout=self.timeout
             )
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # OpenRouter (and some APIs) return HTTP 200 with an error body,
+            # e.g. {"error": {"message": "Received 400 fetching image ...", "code": 400}}
+            # Detect and raise so callers get a clear message instead of empty results.
+            if "error" in data and "results" not in data:
+                err = data["error"]
+                msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                raise requests.exceptions.RequestException(
+                    f"Remote Rerank API returned an error: {msg}"
+                )
+            return data
         except requests.exceptions.HTTPError as e:
             # Include server response in error message for debugging
             try:
