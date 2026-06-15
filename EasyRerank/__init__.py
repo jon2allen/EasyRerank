@@ -7,6 +7,7 @@ from .easy_ranker import EasyRanker
 from .local_reranker import LocalReranker
 from .remote_reranker import RemoteReranker
 from .directory_text_processor import DirectoryTextProcessor
+from .directory_image_processor import DirectoryImageProcessor
 from .text_parser import TextParser
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     'LocalReranker',
     'RemoteReranker',
     'DirectoryTextProcessor',
+    'DirectoryImageProcessor',
     'TextParser'
 ]

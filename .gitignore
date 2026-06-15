@@ -24,3 +24,6 @@ build/
 images/*.jpg
 images/*.png
 images/*.webp
+
+# Test image directories
+image_test/

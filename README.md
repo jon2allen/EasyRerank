@@ -12,6 +12,7 @@ A premium, production-ready, self-contained Python module for local and remote s
 
 - **Dual-Backend Capabilities**: Auto-routes between a locally running `llama.cpp` server (using models like `Qwen3-Reranker` or `bge-reranker-v2-m3`) and the remote `Jina AI Cloud API` (`jina-reranker-v3`).
 - **Vision/Image Reranking** *(v0.2.2)*: Supports mixed text + image document lists for vision-language rerankers (e.g. `nvidia/llama-nemotron-rerank-vl-1b-v2:free` via OpenRouter). Pass `{"image": url}` and `{"text": "..."}` dicts alongside plain strings — the API payload is formatted automatically.
+- **Directory Image Processing** *(v0.2.3)*: Scans and batches folders of image files safely (up to 64 images or 30MB per batch, whichever comes first) using `DirectoryImageProcessor` and filters top $N$ candidates from each batch.
 - **Robust Text Processing**: Automatically loads, parses, and dynamically chunks `.txt` directories into sentence or paragraph blocks with built-in protection against local context size crashes (512-token limits).
 - **Intelligent Pre-filtering**: Provides length-based batched pre-selection (`process_with_batched_top_n`) to extract candidate summaries before sending them to the scoring models.
 - **Unified Meta-Wrapper**: The high-level `EasyRanker` wrapper supports seamless list-based in-memory reranking and directory-based file reranking with automatic backend detection, score-caching, and beautiful CLI output tables.
@@ -331,6 +332,7 @@ The project includes ten standard Python verification scripts (`quick_test*.py`)
 | **[quick_test12.py](file:///Users/jon2allen/projects/rerank/quick_test12.py)** | Vision/image reranking. Tests `RemoteReranker` with a mixed list of `{"image": url}` and `{"text": "..."}` documents against the NVIDIA `llama-nemotron-rerank-vl-1b-v2:free` model via OpenRouter. Validates that plain strings are auto-wrapped and that scores are returned for both image and text entries. | **Remote** (`RemoteReranker` / OpenRouter) |
 | **[quick_test13.py](file:///Users/jon2allen/projects/rerank/quick_test13.py)** | Base64 image input test. Verifies that base64-encoded image data URIs (loaded from local cached files) produce identical scores to their HTTP URL baselines. | **Remote** (`RemoteReranker` / OpenRouter) |
 | **[quick_test14.py](file:///Users/jon2allen/projects/rerank/quick_test14.py)** | Visual discrimination test. Performs multi-query evaluation against 4 base64 cached images to verify that the model correctly identifies and ranks subjects (cat, dog, horse, car). | **Remote** (`RemoteReranker` / OpenRouter) |
+| **[quick_test15.py](file:///Users/jon2allen/projects/rerank/quick_test15.py)** | Directory image pre-selection test. Demonstrates `DirectoryImageProcessor` batching images by file size/count and selecting the top scoring candidate per batch. | **Remote** (`RemoteReranker` / OpenRouter) |
 
 ---
 
