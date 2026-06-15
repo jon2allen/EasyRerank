@@ -101,6 +101,39 @@ class TestLocalRerankerUnit(unittest.TestCase):
         self.assertEqual(results[1]["index"], 15)
         self.assertEqual(results[1]["document"]["text"], "doc 15")
 
+    @patch('requests.post')
+    def test_rerank_dict_inputs(self, mock_post):
+        """Test that LocalReranker can parse dict documents containing only text."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "results": [
+                {"index": 0, "relevance_score": 0.88}
+            ]
+        }
+        mock_post.return_value = mock_response
+
+        docs = [{"text": "Hello world"}]
+        results = self.reranker.rerank("query", docs)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["index"], 0)
+        self.assertEqual(results[0]["document"], {"text": "Hello world"})
+        # Verify that only the text string was sent to the server payload
+        mock_post.assert_called_once_with(
+            "http://localhost:8080/v1/rerank",
+            json={
+                'query': "query",
+                'documents': ["Hello world"]
+            },
+            timeout=120
+        )
+
+    def test_rerank_image_inputs_raises_value_error(self):
+        """Test that LocalReranker raises ValueError if image inputs are supplied."""
+        docs = [{"image": "https://example.com/cat.jpg"}]
+        with self.assertRaises(ValueError) as context:
+            self.reranker.rerank("query", docs)
+        self.assertIn("LocalReranker does not support image/multimodal documents", str(context.exception))
 
 
 if __name__ == "__main__":

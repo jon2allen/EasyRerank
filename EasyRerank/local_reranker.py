@@ -185,7 +185,7 @@ class LocalReranker:
     def rerank(
         self,
         query: str,
-        documents: List[str],
+        documents: List[Union[str, Dict[str, Any]]],
         batch_size: int = 32,
         top_n: Optional[int] = None
     ) -> List[Dict[str, Any]]:
@@ -197,7 +197,8 @@ class LocalReranker:
         
         Args:
             query: The search query
-            documents: List of document texts to rerank
+            documents: List of document texts to rerank (str) or text dictionaries.
+                       Note: local rerankers do not support image/multimodal inputs.
             batch_size: Number of documents per API call (16, 32, or 64)
             top_n: Maximum number of results to return (None = return all)
             
@@ -209,15 +210,35 @@ class LocalReranker:
             Sorted by relevance_score in descending order.
             
         Raises:
-            ValueError: If batch_size is invalid or no documents provided
+            ValueError: If batch_size is invalid, no documents provided, or if image inputs are passed.
         """
         if not documents:
             return []
 
+        # Validate documents and extract plain strings for local API
+        plain_docs: List[str] = []
+        for idx, doc in enumerate(documents):
+            if isinstance(doc, dict):
+                if 'image' in doc:
+                    raise ValueError(
+                        f"LocalReranker does not support image/multimodal documents (found at index {idx}). "
+                        "Please use RemoteReranker with a supported vision model (e.g. via OpenRouter)."
+                    )
+                elif 'text' in doc:
+                    plain_docs.append(doc['text'])
+                else:
+                    raise ValueError(
+                        f"Document dictionary at index {idx} must contain either 'text' or 'image' key."
+                    )
+            elif isinstance(doc, str):
+                plain_docs.append(doc)
+            else:
+                raise TypeError(f"Document at index {idx} must be a string or a dictionary.")
+
         batch_size = self._validate_batch_size(batch_size)
 
         # Split into batches
-        batches = self._batch_documents(documents, batch_size)
+        batches = self._batch_documents(plain_docs, batch_size)
 
         # Collect all results
         all_results: List[Dict[str, Any]] = []
@@ -241,7 +262,11 @@ class LocalReranker:
                     result['index'] = global_idx
                     # Ensure document field is populated for parity with Jina Remote API
                     if 'document' not in result or not result['document']:
-                        result['document'] = {'text': documents[global_idx]}
+                        orig_doc = documents[global_idx]
+                        if isinstance(orig_doc, dict):
+                            result['document'] = orig_doc
+                        else:
+                            result['document'] = {'text': orig_doc}
             
             all_results.extend(batch_results)
 

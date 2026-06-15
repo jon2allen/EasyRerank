@@ -329,6 +329,8 @@ The project includes ten standard Python verification scripts (`quick_test*.py`)
 | **[quick_test10.py](file:///Users/jon2allen/projects/rerank/quick_test10.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend using all three chunking modes. Demonstrates cloud-based or local reranking with different text segmentation and automatic chunk splitting for long paragraphs/lines. | **Auto** (`EasyRanker`) |
 | **[quick_test11.py](file:///Users/jon2allen/projects/rerank/quick_test11.py)** | Inline markdown with line-based chunking. Tests processing of structured markdown content (30 Western European foods with descriptions) with 4-line chunking, then feeds all chunks to `EasyRanker` with `backend='auto'` and no model specified. | **Auto** (`EasyRanker`) |
 | **[quick_test12.py](file:///Users/jon2allen/projects/rerank/quick_test12.py)** | Vision/image reranking. Tests `RemoteReranker` with a mixed list of `{"image": url}` and `{"text": "..."}` documents against the NVIDIA `llama-nemotron-rerank-vl-1b-v2:free` model via OpenRouter. Validates that plain strings are auto-wrapped and that scores are returned for both image and text entries. | **Remote** (`RemoteReranker` / OpenRouter) |
+| **[quick_test13.py](file:///Users/jon2allen/projects/rerank/quick_test13.py)** | Base64 image input test. Verifies that base64-encoded image data URIs (loaded from local cached files) produce identical scores to their HTTP URL baselines. | **Remote** (`RemoteReranker` / OpenRouter) |
+| **[quick_test14.py](file:///Users/jon2allen/projects/rerank/quick_test14.py)** | Visual discrimination test. Performs multi-query evaluation against 4 base64 cached images to verify that the model correctly identifies and ranks subjects (cat, dog, horse, car). | **Remote** (`RemoteReranker` / OpenRouter) |
 
 ---
 
@@ -354,11 +356,16 @@ The project includes several shell scripts in the root directory to assist with 
 
 ## Changelog
 
-### v0.2.2 — Vision/Image Reranking
+### v0.2.2 — Vision/Image Reranking & Local Reranker Fixes
+- **`LocalReranker` Indexing Fix**: Fixed index offset mapping when processing documents across multiple batches; local indices are now correctly offset by the batch index to map back to original global indices.
+- **`LocalReranker` Compatibility**: Ensured the `document` text dictionary is populated in the returned result list for full parity with the `RemoteReranker` response format.
 - **`RemoteReranker`**: `_call_rerank_api` and `rerank()` now accept `List[Union[str, Dict[str, Any]]]`.
   - If any document is a `dict` (`{"image": url}` or `{"text": "..."}`), the full payload is sent as a list of dicts — plain strings are automatically wrapped as `{"text": s}`.
   - Pure string lists continue to be sent as-is (backward compatible with Cohere, Jina).
-- Added `quick_test12.py` for vision reranking validation.
+- **New Tests & Cache Helpers**:
+  - Added [test_local_reranker.py](file:///Users/jon2allen/projects/rerank/test_local_reranker.py) for offline unit testing.
+  - Added `fetch_test_images.py` to cache test images locally.
+  - Added `quick_test12.py`, `quick_test13.py` (Base64 test), and `quick_test14.py` (Visual discrimination test) for vision reranking validation.
 - Updated `pyproject.toml` description and keywords to reflect multimodal support.
 
 ### v0.2.1

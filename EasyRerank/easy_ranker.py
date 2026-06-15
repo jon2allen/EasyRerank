@@ -30,7 +30,7 @@ class EasyRanker:
 
     def __init__(
         self,
-        documents: Optional[Union[str, List[str]]] = None,
+        documents: Optional[Union[str, List[Union[str, Dict[str, Any]]]]] = None,
         backend: str = 'auto',  # 'auto', 'local', 'remote'
         api_key: Optional[str] = None,
         host: str = 'localhost',
@@ -180,7 +180,7 @@ class EasyRanker:
     def rerank(
         self,
         query: str,
-        documents: Optional[Union[str, List[str]]] = None,
+        documents: Optional[Union[str, List[Union[str, Dict[str, Any]]]]] = None,
         top_n: Optional[int] = None,
         batch_size: int = 64,
         verbose: bool = True,
@@ -280,8 +280,15 @@ class EasyRanker:
                         ref_line = f"File: {filename} (ID: {chunk_id})"
                     else:
                         ref_line = f"List Index: {res.get('index', 0)}"
-                        # Check either structure from remote or local format
-                        text = res.get('document', {}).get('text', '') if isinstance(res.get('document'), dict) else doc_source[res.get('index', 0)]
+                        doc_obj = res.get('document')
+                        if isinstance(doc_obj, dict):
+                            if 'image' in doc_obj:
+                                img_src = doc_obj['image']
+                                text = img_src if not img_src.startswith('data:') else f"[base64 image, {len(img_src):,} chars]"
+                            else:
+                                text = doc_obj.get('text', '')
+                        else:
+                            text = str(doc_source[res.get('index', 0)])
 
                     # Clean snippet
                     snippet = text.replace('\n', ' ').strip()
