@@ -126,6 +126,22 @@ def main() -> None:
 
         print(f"  HTTP {status} | Provider: {data.get('provider', '?')}")
         print()
+
+        # Build a score lookup: original doc index -> relevance_score
+        score_by_idx = {res.get("index", 0): res.get("relevance_score", 0.0)
+                        for res in results}
+
+        # --- Raw scores: original document order ---
+        print(f"  Raw scores (original document order):")
+        print(f"  {'Doc#':<6} {'Subject':<8} {'Score':<10} Raw index from API")
+        print(f"  {'-'*6} {'-'*8} {'-'*10} {'-'*20}")
+        for i, subject in enumerate(SUBJECTS):
+            score = score_by_idx.get(i, 0.0)
+            print(f"  Doc {i+1:<2}  {subject:<8} {score:.6f}   index={i}")
+        print()
+
+        # --- Ranked results: sorted by relevance descending ---
+        print(f"  Ranked results (sorted by score):")
         print(f"  {'Rank':<6} {'Doc#':<6} {'Subject':<8} {'Score'}")
         print(f"  {'-'*6} {'-'*6} {'-'*8} {'-'*8}")
         for rank, res in enumerate(results, 1):
@@ -134,7 +150,7 @@ def main() -> None:
             subject = SUBJECTS[idx] if idx < len(SUBJECTS) else f"idx{idx}"
             doc_num = idx + 1
             marker = "  <-- #1 winner" if rank == 1 else ""
-            print(f"  {rank:<6} Doc {doc_num:<3} {subject:<8} {score:.4f}{marker}")
+            print(f"  {rank:<6} Doc {doc_num:<3} {subject:<8} {score:.6f}{marker}")
         print()
 
     sep("Done")
