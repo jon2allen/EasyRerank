@@ -12,7 +12,7 @@ A premium, production-ready, self-contained Python module for local and remote s
 
 - **Dual-Backend Capabilities**: Auto-routes between a locally running `llama.cpp` server (using models like `Qwen3-Reranker` or `bge-reranker-v2-m3`) and the remote `Jina AI Cloud API` (`jina-reranker-v3`).
 - **Vision/Image Reranking** *(v0.2.2)*: Supports mixed text + image document lists for vision-language rerankers (e.g. `nvidia/llama-nemotron-rerank-vl-1b-v2:free` via OpenRouter). Pass `{"image": url}` and `{"text": "..."}` dicts alongside plain strings — the API payload is formatted automatically.
-- **Directory Image Processing** *(v0.2.3)*: Scans and batches folders of image files safely (up to 64 images or 30MB per batch, whichever comes first) using `DirectoryImageProcessor` and filters top $N$ candidates from each batch.
+- **Directory Image Processing** *(v0.2.4)*: Scans and batches folders of image files safely (up to 64 images or 30MB per batch, whichever comes first) using `DirectoryImageProcessor` and filters top $N$ candidates from each batch.
 - **Robust Text Processing**: Automatically loads, parses, and dynamically chunks `.txt` directories into sentence or paragraph blocks with built-in protection against local context size crashes (512-token limits).
 - **Intelligent Pre-filtering**: Provides length-based batched pre-selection (`process_with_batched_top_n`) to extract candidate summaries before sending them to the scoring models.
 - **Unified Meta-Wrapper**: The high-level `EasyRanker` wrapper supports seamless list-based in-memory reranking and directory-based file reranking with automatic backend detection, score-caching, and beautiful CLI output tables.
@@ -357,6 +357,14 @@ The project includes several shell scripts in the root directory to assist with 
 ---
 
 ## Changelog
+
+### v0.2.4 — Directory Image Processing
+- **`DirectoryImageProcessor`**: Implemented class to scan, batch, and load image files from a directory.
+  - Supports memory-safe batching (up to 64 images or 30MB payload sizes).
+  - Retrieves top $N$ scoring candidates per batch.
+- **New Tests & Scripts**:
+  - Added [test_directory_image_processor.py](file:///Users/jon2allen/projects/rerank/test_directory_image_processor.py) for offline unit testing.
+  - Added `quick_test15.py` and `quick_test_130_images.py` to validate directory-based visual reranking.
 
 ### v0.2.3 — Local Reranker Bugfixes & Typings
 - **`LocalReranker` Indexing Fix**: Fixed index offset mapping when processing documents across multiple batches; local indices are now correctly offset by the batch index to map back to original global indices.
