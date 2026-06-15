@@ -19,3 +19,8 @@ venv/
 dist/
 build/
 *.egg-info/
+
+# Test image cache
+images/*.jpg
+images/*.png
+images/*.webp
