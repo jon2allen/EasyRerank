@@ -1,27 +1,42 @@
-"""Remote Reranker - Uses Jina AI's remote Cloud API with jina-reranker-v3 model.
+"""Remote Reranker - Uses a remote Cloud API (Jina AI, OpenRouter, etc.) for reranking.
 
-This module provides a class to rerank documents using Jina AI's cloud hosted
-reranker service.
+This module provides a class to rerank documents using a remote reranker API.
+Supports both pure-text and mixed text/image document lists (vision-language models).
 
 Requirements:
-    - Jina AI API Key (can be passed in or set via JINA_API_KEY environment variable)
+    - API Key (can be passed in or set via JINA_API_KEY / OPENROUTER_API_KEY env var)
 
 Usage:
     from remote_reranker import RemoteReranker
 
-    # Initialize (looks up JINA_API_KEY in environment by default)
+    # Text-only reranking
     reranker = RemoteReranker()
-
-    # Rerank with a query and list of documents
     results = reranker.rerank(
         query="What is the capital of France?",
         documents=["Paris is the capital...", "Berlin is..."],
         batch_size=32
     )
 
+    # Vision/image reranking (nvidia/llama-nemotron-rerank-vl-1b-v2:free)
+    reranker = RemoteReranker(
+        api_key="sk-or-...",
+        model="nvidia/llama-nemotron-rerank-vl-1b-v2:free",
+        base_url="https://openrouter.ai/api/v1/rerank"
+    )
+    results = reranker.rerank(
+        query="a photograph of a cat",
+        documents=[
+            {"image": "https://example.com/cat.jpg"},
+            {"text": "A fluffy cat on a windowsill."},
+            {"text": "A street map of Berlin."},
+        ]
+    )
+
     # Results are sorted by relevance score (descending)
     for result in results:
-        print(f"Score: {result['relevance_score']}, Doc: {result['document']['text']}")
+        doc = result['document']
+        source = doc.get('image') or doc.get('text', '')
+        print(f"Score: {result['relevance_score']}, Source: {source}")
 
 Reference:
     See rerank_api.md for API details.
@@ -121,19 +136,28 @@ class RemoteReranker:
     def _call_rerank_api(
         self,
         query: str,
-        documents: List[str],
+        documents: List[Union[str, Dict[str, Any]]],
         top_n: Optional[int] = None
     ) -> Dict[str, Any]:
         """Make a single API call to the remote rerank endpoint.
-        
+
+        Supports both text-only and mixed text/image document payloads.
+        If any document is a dict (e.g. {"image": url} or {"text": "..."}),
+        the entire payload is sent as a list of dicts — plain strings are
+        automatically wrapped as {"text": s}.  Pure string lists are sent
+        as-is for backward compatibility with Cohere and Jina APIs.
+
         Args:
             query: The search query
-            documents: List of document texts (up to MAX_BATCH_SIZE)
+            documents: List of document texts (str) or image/text dicts (dict).
+                       Dicts must have either an "image" key (URL or base64 data URI)
+                       or a "text" key.  Mixed lists are supported.
+                       Maximum MAX_BATCH_SIZE documents per call.
             top_n: Number of top results to return (None = return all)
-            
+
         Returns:
             API response as a dictionary
-            
+
         Raises:
             requests.exceptions.RequestException: If the API call fails
         """
@@ -148,12 +172,25 @@ class RemoteReranker:
             'Authorization': f'Bearer {self.api_key}'
         }
 
-        payload = {
+        # If any document is a dict (vision/image mode), format all as dicts.
+        # Plain strings are wrapped as {"text": s} so the API receives a
+        # homogeneous list of objects.  Pure string lists are left unchanged
+        # for backward compatibility (Cohere, Jina accept plain string arrays).
+        has_dict_docs = any(isinstance(d, dict) for d in documents)
+        if has_dict_docs:
+            formatted_docs: List[Any] = [
+                d if isinstance(d, dict) else {"text": d}
+                for d in documents
+            ]
+        else:
+            formatted_docs = documents  # type: ignore[assignment]
+
+        payload: Dict[str, Any] = {
             'model': self.model,
             'query': query,
-            'documents': documents
+            'documents': formatted_docs
         }
-        
+
         if top_n is not None:
             payload['top_n'] = top_n
 
@@ -171,7 +208,7 @@ class RemoteReranker:
             try:
                 error_details = response.json()
                 error_msg = f"Remote Rerank API call failed: {e}. Server response: {error_details}"
-            except:
+            except Exception:
                 error_msg = f"Remote Rerank API call failed: {e}. Server response: {response.text[:500]}"
             raise requests.exceptions.RequestException(error_msg)
         except requests.exceptions.RequestException as e:
@@ -182,29 +219,35 @@ class RemoteReranker:
     def rerank(
         self,
         query: str,
-        documents: List[str],
+        documents: List[Union[str, Dict[str, Any]]],
         batch_size: int = 32,
         top_n: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Rerank a list of documents against a query.
-        
+
+        Supports both text-only and mixed text/image document lists.
+        See _call_rerank_api for full details on document format.
+
         This method splits the documents into batches and makes multiple
         API calls if needed, then combines and re-sorts the results by
         relevance score.
-        
+
         Args:
             query: The search query
-            documents: List of document texts to rerank
+            documents: List of document texts (str) or image/text dicts.
+                       Example text-only:  ["Paris is the capital...", "Berlin..."]
+                       Example vision:     [{"image": "https://..."}, {"text": "..."}]
+                       Example mixed:      [{"image": "https://..."}, "plain text"]
             batch_size: Number of documents per API call (16, 32, or 64)
             top_n: Maximum number of results to return (None = return all)
-            
+
         Returns:
             List of result dictionaries, each containing:
                 - index: Original document index
                 - relevance_score: Score from the reranker (0.0 to 1.0)
-                - document: {'text': document text}
+                - document: {'text': ...} or {'image': ...} depending on input
             Sorted by relevance_score in descending order.
-            
+
         Raises:
             ValueError: If batch_size is invalid or no documents provided
         """
