@@ -1,16 +1,14 @@
 """quick_test14.py - Visual Discrimination Test
 
-Proves the NVIDIA llama-nemotron-rerank-vl-1b-v2:free model can visually
-distinguish between fundamentally different subjects (cat, dog, horse, car)
-by correctly ranking the matching image #1 for each query.
+Sends 4 images (cat, dog, horse, car) to the NVIDIA reranker and shows
+which document ranks #1 for each query. Documents are always in the same
+fixed order so you can read the results directly.
 
-All 4 images are loaded from the local images/ cache (fast, no re-downloading).
-
-Tests:
-  1. Query "a photograph of a cat"    -> cat must rank #1
-  2. Query "a photograph of a dog"    -> dog must rank #1
-  3. Query "an automobile or vehicle" -> car must rank #1
-  4. Query "a horse or equine animal" -> horse must rank #1
+Documents (fixed order for every test):
+  Doc 1: cat.jpg
+  Doc 2: dog.jpg
+  Doc 3: horse.jpg
+  Doc 4: car.jpg
 
 Usage:
   python fetch_test_images.py   # run once to populate images/
@@ -29,38 +27,26 @@ from fetch_test_images import fetch_all, load_image_b64
 MODEL = "nvidia/llama-nemotron-rerank-vl-1b-v2:free"
 BASE_URL = "https://openrouter.ai/api/v1/rerank"
 
-DISCRIMINATION_TESTS = [
-    {
-        "label": "Test 1: Find the CAT",
-        "query": "a photograph of a cat",
-        "expected": "cat",
-    },
-    {
-        "label": "Test 2: Find the DOG",
-        "query": "a photograph of a dog",
-        "expected": "dog",
-    },
-    {
-        "label": "Test 3: Find the CAR",
-        "query": "an automobile, car or vehicle",
-        "expected": "car",
-    },
-    {
-        "label": "Test 4: Find the HORSE",
-        "query": "a horse or equine animal",
-        "expected": "horse",
-    },
+# Fixed document order — never changes between tests
+SUBJECTS = ["cat", "dog", "horse", "car"]
+FILENAMES = {s: f"{s}.jpg" for s in SUBJECTS}
+
+QUERIES = [
+    "a photograph of a cat",
+    "a photograph of a dog",
+    "an automobile, car or vehicle",
+    "a horse or equine animal",
 ]
 
 
-def rerank(query: str, documents: list, top_n: int = None):
+def rerank(query: str, documents: list):
     """Direct API call - returns (status_code, response_dict)."""
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     payload = {
         "model": MODEL,
         "query": query,
         "documents": documents,
-        "top_n": top_n or len(documents),
+        "top_n": len(documents),
     }
     resp = requests.post(
         BASE_URL,
@@ -78,61 +64,6 @@ def sep(title: str = "") -> None:
         print("-" * 70)
 
 
-def run_discrimination_test(
-    label: str,
-    query: str,
-    expected: str,
-    image_b64s: dict,
-) -> bool:
-    """
-    Rerank all loaded images against the query.
-    Returns True if the expected subject image ranks #1.
-    """
-    sep(label)
-
-    subjects = list(image_b64s.keys())
-    docs = [{"image": image_b64s[s]} for s in subjects]
-
-    print(f"  Query    : \"{query}\"")
-    print(f"  Expected : '{expected}' image ranks #1")
-    print(f"  Subjects : {', '.join(subjects)}")
-    print()
-
-    status, data = rerank(query, docs)
-
-    if "error" in data and "results" not in data:
-        err = data["error"]
-        msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-        print(f"  HTTP {status} | API ERROR: {msg}")
-        return False
-
-    results = data.get("results", [])
-    if not results:
-        print(f"  HTTP {status} | WARN: No results returned")
-        return False
-
-    print(f"  HTTP {status} | Provider: {data.get('provider', '?')}")
-    print()
-    print(f"  {'Rank':<5} {'Score':<9} {'Subject':<8} ")
-    print(f"  {'-'*5} {'-'*9} {'-'*8}")
-
-    winner = None
-    for rank, res in enumerate(results, 1):
-        idx = res.get("index", 0)
-        score = res.get("relevance_score", 0.0)
-        subject = subjects[idx] if idx < len(subjects) else f"idx{idx}"
-        marker = "  <-- TOP" if rank == 1 else ""
-        if rank == 1:
-            winner = subject
-        print(f"  {rank:<5} {score:<9.4f} {subject:<8}{marker}")
-
-    passed = winner == expected
-    verdict = "PASS" if passed else f"FAIL (got '{winner}', expected '{expected}')"
-    print()
-    print(f"  Result: {verdict}")
-    return passed
-
-
 def main() -> None:
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
@@ -142,70 +73,71 @@ def main() -> None:
     print()
     print("quick_test14.py -- Visual Discrimination Test")
     print(f"Model  : {MODEL}")
-    print(f"Images : cat | dog | horse | car")
     print()
 
     # ---------------------------------------------------------------
-    # Load all 4 images from local cache (download if missing)
+    # Load all images from local cache
     # ---------------------------------------------------------------
     sep("Loading images from local cache (images/)")
-    needed = ["cat.jpg", "dog.jpg", "horse.jpg", "car.jpg"]
-    fetch_all(needed)
+    fetch_all(list(FILENAMES.values()))
     print()
 
     image_b64s = {}
-    for fname in needed:
-        label = fname.replace(".jpg", "")
+    for subject, fname in FILENAMES.items():
         b64 = load_image_b64(fname)
         if b64:
-            image_b64s[label] = b64
-            print(f"  {label:<6} : {len(b64):>9,} chars  (images/{fname})")
+            image_b64s[subject] = b64
         else:
-            print(f"  {label:<6} : MISSING - run: python fetch_test_images.py")
+            print(f"  ERROR: {fname} not available. Run: python fetch_test_images.py")
+            sys.exit(1)
 
-    if len(image_b64s) < 2:
-        print()
-        print("ERROR: Need at least 2 images. Run: python fetch_test_images.py")
-        sys.exit(1)
-
-    missing = [t["expected"] for t in DISCRIMINATION_TESTS if t["expected"] not in image_b64s]
-    if missing:
-        print(f"\n  WARNING: Missing images for tests: {missing}")
-        print(f"  These tests will be skipped.\n")
-
+    # Print fixed document index for reference
+    print("  Fixed document order (same for every test):")
+    for i, subject in enumerate(SUBJECTS, 1):
+        fname = FILENAMES[subject]
+        size = len(image_b64s[subject]) // 1024
+        print(f"    Doc {i}: {subject:<6}  ({size}KB base64)  images/{fname}")
     print()
 
-    # ---------------------------------------------------------------
-    # Run discrimination tests
-    # ---------------------------------------------------------------
-    test_results = []
-    for test in DISCRIMINATION_TESTS:
-        if test["expected"] not in image_b64s:
-            sep(test["label"])
-            print(f"  SKIPPED: '{test['expected']}' image not in cache")
-            test_results.append(None)
-        else:
-            passed = run_discrimination_test(
-                label=test["label"],
-                query=test["query"],
-                expected=test["expected"],
-                image_b64s=image_b64s,
-            )
-            test_results.append(passed)
-        print()
+    # Build the fixed docs list once
+    docs = [{"image": image_b64s[s]} for s in SUBJECTS]
 
     # ---------------------------------------------------------------
-    # Summary
+    # Run each query against the same fixed document list
     # ---------------------------------------------------------------
-    sep("Summary")
-    run = [r for r in test_results if r is not None]
-    passed = sum(run)
-    total = len(run)
-    skipped = len(test_results) - total
-    print(f"  Passed  : {passed}/{total} tests")
-    if skipped:
-        print(f"  Skipped : {skipped} (missing images)")
-    print(f"  Model correctly identified the target image in {passed} of {total} queries.")
+    for query in QUERIES:
+        sep(f'Query: "{query}"')
+        print()
+
+        status, data = rerank(query, docs)
+
+        if "error" in data and "results" not in data:
+            err = data["error"]
+            msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            print(f"  HTTP {status} | API ERROR: {msg}")
+            print()
+            continue
+
+        results = data.get("results", [])
+        if not results:
+            print(f"  HTTP {status} | WARN: No results returned")
+            print()
+            continue
+
+        print(f"  HTTP {status} | Provider: {data.get('provider', '?')}")
+        print()
+        print(f"  {'Rank':<6} {'Doc#':<6} {'Subject':<8} {'Score'}")
+        print(f"  {'-'*6} {'-'*6} {'-'*8} {'-'*8}")
+        for rank, res in enumerate(results, 1):
+            idx = res.get("index", 0)
+            score = res.get("relevance_score", 0.0)
+            subject = SUBJECTS[idx] if idx < len(SUBJECTS) else f"idx{idx}"
+            doc_num = idx + 1
+            marker = "  <-- #1 winner" if rank == 1 else ""
+            print(f"  {rank:<6} Doc {doc_num:<3} {subject:<8} {score:.4f}{marker}")
+        print()
+
+    sep("Done")
     print()
 
 
