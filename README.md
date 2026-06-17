@@ -318,21 +318,21 @@ The project includes ten standard Python verification scripts (`quick_test*.py`)
 
 | Script Name | Purpose & Features Tested | Backend Mode |
 |:---|:---|:---|
-| **[quick_test1.py](file:///Users/jon2allen/projects/rerank/quick_test1.py)** | Evaluates file loading and text parsing mechanics. Loads and splits Madison inaugural addresses into chunks and prints the resulting segments and index. | **None** (Tests processing only) |
-| **[quick_test2.py](file:///Users/jon2allen/projects/rerank/quick_test2.py)** | Basic local query verification. Reranks the first 50 chunks of Madison speeches against the query `"Justice"`. | **Local** (`LocalReranker`) |
-| **[quick_test3.py](file:///Users/jon2allen/projects/rerank/quick_test3.py)** | Pre-filtering and scaling local tests. Performs batched length-based pre-selection (`top_n=2`) under a safe `1500` character limit to query `"Character of people"`. | **Local** (`LocalReranker`) |
-| **[quick_test4.py](file:///Users/jon2allen/projects/rerank/quick_test4.py)** | Pre-filtering and scaling remote tests. Mirrors the pre-selection logic of `quick_test3.py` but routes cross-encoder scoring to Jina AI's Cloud API. | **Remote** (`RemoteReranker`) |
-| **[quick_test5.py](file:///Users/jon2allen/projects/rerank/quick_test5.py)** | High-level `EasyRanker` wrapper test. Tests auto-routing, in-memory list reranking, directory document loading, and cached results caching. | **Both / Auto-routing** (`EasyRanker`) |
-| **[quick_test6.py](file:///Users/jon2allen/projects/rerank/quick_test6.py)** | Cloud context capabilities demonstration. Forces cloud routing to exploit the 131K token window, handling large chunks (up to `3000` characters) safely. | **Remote Forced** (`EasyRanker` remote) |
-| **[quick_test7.py](file:///Users/jon2allen/projects/rerank/quick_test7.py)** | Explicit model endpoint routing. Tests local mode forcing the server to evaluate a specific model key (`zz2Felladrin/...`). | **Local Forced** (`EasyRanker` local) |
-| **[quick_test8.py](file:///Users/jon2allen/projects/rerank/quick_test8.py)** | Chunking mode verification. Tests `DirectoryTextProcessor` with all three chunking modes: `"sentences"`, `"lines"`, and `"paragraphs"`. Validates mode selection and error handling. | **None** (Tests processing only) |
-| **[quick_test9.py](file:///Users/jon2allen/projects/rerank/quick_test9.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend (local or remote) using all three chunking modes. Verifies that different text segmentation approaches work with the high-level wrapper and `max_sentence_length` splitting. | **Auto** (`EasyRanker`) |
-| **[quick_test10.py](file:///Users/jon2allen/projects/rerank/quick_test10.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend using all three chunking modes. Demonstrates cloud-based or local reranking with different text segmentation and automatic chunk splitting for long paragraphs/lines. | **Auto** (`EasyRanker`) |
-| **[quick_test11.py](file:///Users/jon2allen/projects/rerank/quick_test11.py)** | Inline markdown with line-based chunking. Tests processing of structured markdown content (30 Western European foods with descriptions) with 4-line chunking, then feeds all chunks to `EasyRanker` with `backend='auto'` and no model specified. | **Auto** (`EasyRanker`) |
-| **[quick_test12.py](file:///Users/jon2allen/projects/rerank/quick_test12.py)** | Vision/image reranking. Tests `RemoteReranker` with a mixed list of `{"image": url}` and `{"text": "..."}` documents against the NVIDIA `llama-nemotron-rerank-vl-1b-v2:free` model via OpenRouter. Validates that plain strings are auto-wrapped and that scores are returned for both image and text entries. | **Remote** (`RemoteReranker` / OpenRouter) |
-| **[quick_test13.py](file:///Users/jon2allen/projects/rerank/quick_test13.py)** | Base64 image input test. Verifies that base64-encoded image data URIs (loaded from local cached files) produce identical scores to their HTTP URL baselines. | **Remote** (`RemoteReranker` / OpenRouter) |
-| **[quick_test14.py](file:///Users/jon2allen/projects/rerank/quick_test14.py)** | Visual discrimination test. Performs multi-query evaluation against 4 base64 cached images to verify that the model correctly identifies and ranks subjects (cat, dog, horse, car). | **Remote** (`RemoteReranker` / OpenRouter) |
-| **[quick_test15.py](file:///Users/jon2allen/projects/rerank/quick_test15.py)** | Directory image pre-selection test. Demonstrates `DirectoryImageProcessor` batching images by file size/count and selecting the top scoring candidate per batch. | **Remote** (`RemoteReranker` / OpenRouter) |
+| **[quick_test1.py](quick_test1.py)** | Evaluates file loading and text parsing mechanics. Loads and splits Madison inaugural addresses into chunks and prints the resulting segments and index. | **None** (Tests processing only) |
+| **[quick_test2.py](quick_test2.py)** | Basic local query verification. Reranks the first 50 chunks of Madison speeches against the query `"Justice"`. | **Local** (`LocalReranker`) |
+| **[quick_test3.py](quick_test3.py)** | Pre-filtering and scaling local tests. Performs batched length-based pre-selection (`top_n=2`) under a safe `1500` character limit to query `"Character of people"`. | **Local** (`LocalReranker`) |
+| **[quick_test4.py](quick_test4.py)** | Pre-filtering and scaling remote tests. Mirrors the pre-selection logic of `quick_test3.py` but routes cross-encoder scoring to Jina AI's Cloud API. | **Remote** (`RemoteReranker`) |
+| **[quick_test5.py](quick_test5.py)** | High-level `EasyRanker` wrapper test. Tests auto-routing, in-memory list reranking, directory document loading, and cached results caching. | **Both / Auto-routing** (`EasyRanker`) |
+| **[quick_test6.py](quick_test6.py)** | Cloud context capabilities demonstration. Forces cloud routing to exploit the 131K token window, handling large chunks (up to `3000` characters) safely. | **Remote Forced** (`EasyRanker` remote) |
+| **[quick_test7.py](quick_test7.py)** | Explicit model endpoint routing. Tests local mode forcing the server to evaluate a specific model key (`zz2Felladrin/...`). | **Local Forced** (`EasyRanker` local) |
+| **[quick_test8.py](quick_test8.py)** | Chunking mode verification. Tests `DirectoryTextProcessor` with all three chunking modes: `"sentences"`, `"lines"`, and `"paragraphs"`. Validates mode selection and error handling. | **None** (Tests processing only) |
+| **[quick_test9.py](quick_test9.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend (local or remote) using all three chunking modes. Verifies that different text segmentation approaches work with the high-level wrapper and `max_sentence_length` splitting. | **Auto** (`EasyRanker`) |
+| **[quick_test10.py](quick_test10.py)** | Chunking mode with auto backend. Tests `EasyRanker` with auto-detected backend using all three chunking modes. Demonstrates cloud-based or local reranking with different text segmentation and automatic chunk splitting for long paragraphs/lines. | **Auto** (`EasyRanker`) |
+| **[quick_test11.py](quick_test11.py)** | Inline markdown with line-based chunking. Tests processing of structured markdown content (30 Western European foods with descriptions) with 4-line chunking, then feeds all chunks to `EasyRanker` with `backend='auto'` and no model specified. | **Auto** (`EasyRanker`) |
+| **[quick_test12.py](quick_test12.py)** | Vision/image reranking. Tests `RemoteReranker` with a mixed list of `{"image": url}` and `{"text": "..."}` documents against the NVIDIA `llama-nemotron-rerank-vl-1b-v2:free` model via OpenRouter. Validates that plain strings are auto-wrapped and that scores are returned for both image and text entries. | **Remote** (`RemoteReranker` / OpenRouter) |
+| **[quick_test13.py](quick_test13.py)** | Base64 image input test. Verifies that base64-encoded image data URIs (loaded from local cached files) produce identical scores to their HTTP URL baselines. | **Remote** (`RemoteReranker` / OpenRouter) |
+| **[quick_test14.py](quick_test14.py)** | Visual discrimination test. Performs multi-query evaluation against 4 base64 cached images to verify that the model correctly identifies and ranks subjects (cat, dog, horse, car). | **Remote** (`RemoteReranker` / OpenRouter) |
+| **[quick_test15.py](quick_test15.py)** | Directory image pre-selection test. Demonstrates `DirectoryImageProcessor` batching images by file size/count and selecting the top scoring candidate per batch. | **Remote** (`RemoteReranker` / OpenRouter) |
 
 ---
 
@@ -341,15 +341,15 @@ The project includes ten standard Python verification scripts (`quick_test*.py`)
 
 The project includes several shell scripts in the root directory to assist with local server development:
 
-- **[list_local_models.sh](file:///Users/jon2allen/projects/rerank/list_local_models.sh)**: Fetches and displays all models loaded onto your local `llama-server`. It automatically filters out and highlights active models containing `"rerank"` (case-insensitive).
+- **[list_local_models.sh](list_local_models.sh)**: Fetches and displays all models loaded onto your local `llama-server`. It automatically filters out and highlights active models containing `"rerank"` (case-insensitive).
   ```bash
   ./list_local_models.sh [optional_port]
   ```
-- **[test_rerank_return.sh](file:///Users/jon2allen/projects/rerank/test_rerank_return.sh)**: Verifies that your local `llama-server` configuration is successfully returning full document text alongside scores. It prints an educational manual `curl` command structure at the start of execution for training purposes.
+- **[test_rerank_return.sh](test_rerank_return.sh)**: Verifies that your local `llama-server` configuration is successfully returning full document text alongside scores. It prints an educational manual `curl` command structure at the start of execution for training purposes.
   ```bash
   ./test_rerank_return.sh
   ```
-- **[rerank_jina_local.sh](file:///Users/jon2allen/projects/rerank/rerank_jina_local.sh)**: A sample cURL wrapper script that executes a direct POST request using the `jinaai/jina-reranker-v3-GGUF` model layout on a running local server (`localhost:8080`) to quickly test semantic capital city queries.
+- **[rerank_jina_local.sh](rerank_jina_local.sh)**: A sample cURL wrapper script that executes a direct POST request using the `jinaai/jina-reranker-v3-GGUF` model layout on a running local server (`localhost:8080`) to quickly test semantic capital city queries.
   ```bash
   ./rerank_jina_local.sh
   ```
@@ -363,7 +363,7 @@ The project includes several shell scripts in the root directory to assist with 
   - Supports memory-safe batching (up to 64 images or 30MB payload sizes).
   - Retrieves top $N$ scoring candidates per batch.
 - **New Tests & Scripts**:
-  - Added [test_directory_image_processor.py](file:///Users/jon2allen/projects/rerank/test_directory_image_processor.py) for offline unit testing.
+  - Added [test_directory_image_processor.py](test_directory_image_processor.py) for offline unit testing.
   - Added `quick_test15.py` and `quick_test_130_images.py` to validate directory-based visual reranking.
 
 ### v0.2.3 — Local Reranker Bugfixes & Typings
@@ -371,7 +371,7 @@ The project includes several shell scripts in the root directory to assist with 
 - **`LocalReranker` Compatibility**: Ensured the `document` text dictionary is populated in the returned result list for full parity with the `RemoteReranker` response format.
 - **Type Signatures & Safety**: Updated type signatures on `LocalReranker` and `EasyRanker` to support `List[Union[str, Dict[str, Any]]]`. Local reranker checks inputs and raises a clear `ValueError` if image inputs are passed.
 - **Enhanced Formatting**: Improved `EasyRanker` verbose output formatting to print clear descriptions for image/base64 documents without raising `AttributeError`.
-- **New Tests**: Added [test_local_reranker.py](file:///Users/jon2allen/projects/rerank/test_local_reranker.py) for offline unit testing of local batching and type checks.
+- **New Tests**: Added [test_local_reranker.py](test_local_reranker.py) for offline unit testing of local batching and type checks.
 
 ### v0.2.2 — Vision/Image Reranking
 - **`RemoteReranker`**: `_call_rerank_api` and `rerank()` now accept `List[Union[str, Dict[str, Any]]]`.
